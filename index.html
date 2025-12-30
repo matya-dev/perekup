@@ -948,6 +948,13 @@
                                 <div class="profile-stat-value" id="profileSuccessRate">0%</div>
                                 <div class="profile-stat-label">Успешность</div>
                             </div>
+                            <!-- Кнопка сброса данных -->
+                            <div class="profile-stat-card" style="cursor: pointer; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);" id="resetDataBtn">
+                                <div class="profile-stat-value" style="color: white;">
+                                    <i class="fas fa-trash-alt"></i> Сбросить
+                                </div>
+                                <div class="profile-stat-label" style="color: rgba(255, 255, 255, 0.9);">Все данные</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1017,6 +1024,74 @@
         </div>
     </div>
     
+    <!-- Модальное окно установки начального баланса -->
+    <div class="modal-overlay" id="initialBalanceModal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <i class="fas fa-coins" style="color: var(--warning);"></i>
+                <div class="modal-title">Установите начальный баланс</div>
+            </div>
+            
+            <div style="padding: 10px 0 20px 0;">
+                <p style="margin-bottom: 15px; color: var(--text-secondary);">Добро пожаловать! Для начала работы установите ваш начальный баланс:</p>
+                
+                <div class="input-group">
+                    <label class="input-label">Начальный баланс ($)</label>
+                    <input type="number" class="number-input" id="initialBalance" placeholder="10000" min="0" value="10000">
+                </div>
+                
+                <div style="margin-top: 20px; background: rgba(245, 158, 11, 0.1); border-radius: 12px; padding: 15px; border-left: 4px solid var(--warning);">
+                    <p style="color: var(--warning); font-weight: 600; margin-bottom: 10px;"><i class="fas fa-lightbulb"></i> Совет</p>
+                    <p style="color: var(--text-secondary); font-size: 14px;">Установите сумму, с которой хотите начать перекупать вещи. Рекомендуется начать с 10,000$.</p>
+                </div>
+            </div>
+            
+            <div class="modal-actions">
+                <button class="modal-button cancel" id="cancelInitialBtn">
+                    <i class="fas fa-times"></i> Пропустить
+                </button>
+                <button class="modal-button confirm" id="confirmInitialBtn" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                    <i class="fas fa-check"></i> Установить
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Модальное окно подтверждения сброса данных -->
+    <div class="modal-overlay" id="resetModal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i>
+                <div class="modal-title">Сброс всех данных</div>
+            </div>
+            
+            <div style="padding: 20px 0;">
+                <p style="margin-bottom: 15px; color: var(--text-secondary);">Вы уверены, что хотите сбросить все данные?</p>
+                <div style="background: rgba(239, 68, 68, 0.1); border-radius: 12px; padding: 15px; border-left: 4px solid #ef4444;">
+                    <p style="color: #ef4444; font-weight: 600; margin-bottom: 10px;"><i class="fas fa-skull-crossbones"></i> Будет удалено:</p>
+                    <ul style="color: var(--text-secondary); padding-left: 20px; margin: 0;">
+                        <li>Весь инвентарь</li>
+                        <li>История операций</li>
+                        <li>Статистика</li>
+                        <li>Текущий баланс</li>
+                    </ul>
+                </div>
+                <p style="margin-top: 15px; color: var(--warning); font-size: 14px;">
+                    <i class="fas fa-info-circle"></i> Это действие нельзя отменить!
+                </p>
+            </div>
+            
+            <div class="modal-actions">
+                <button class="modal-button cancel" id="cancelResetBtn">
+                    <i class="fas fa-times"></i> Отмена
+                </button>
+                <button class="modal-button confirm" id="confirmResetBtn" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
+                    <i class="fas fa-trash-alt"></i> Сбросить
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Инициализация приложения
         document.addEventListener('DOMContentLoaded', function() {
@@ -1038,7 +1113,8 @@
                 lastName: user?.last_name || '',
                 username: user?.username || 'user_' + Math.floor(Math.random() * 10000),
                 photoUrl: user?.photo_url || null,
-                joinDate: new Date().toLocaleDateString('ru-RU')
+                joinDate: new Date().toLocaleDateString('ru-RU'),
+                isFirstTime: true // Флаг первого входа
             };
             
             // Элементы DOM
@@ -1078,8 +1154,12 @@
             // Снежинки
             const snowflakesContainer = document.getElementById('snowflakes');
             
-            // Модальное окно
+            // Модальные окна
             const sellModal = document.getElementById('sellModal');
+            const initialBalanceModal = document.getElementById('initialBalanceModal');
+            const resetModal = document.getElementById('resetModal');
+            
+            // Элементы модальных окон
             const modalItemName = document.getElementById('modalItemName');
             const modalBuyPrice = document.getElementById('modalBuyPrice');
             const modalProfitPreview = document.getElementById('modalProfitPreview');
@@ -1088,13 +1168,23 @@
             const cancelSellBtn = document.getElementById('cancelSellBtn');
             const confirmSellBtn = document.getElementById('confirmSellBtn');
             
+            // Элементы модального окна начального баланса
+            const initialBalanceInput = document.getElementById('initialBalance');
+            const cancelInitialBtn = document.getElementById('cancelInitialBtn');
+            const confirmInitialBtn = document.getElementById('confirmInitialBtn');
+            
+            // Элементы модального окна сброса данных
+            const cancelResetBtn = document.getElementById('cancelResetBtn');
+            const confirmResetBtn = document.getElementById('confirmResetBtn');
+            const resetDataBtn = document.getElementById('resetDataBtn');
+            
             // График
             let profitChart;
             const ctx = document.getElementById('profitChart').getContext('2d');
             
             // Данные приложения
             let inventory = [];
-            let balance = 10000; // Начальный баланс
+            let balance = 0; // Начальный баланс будет установлен позже
             let totalProfit = 0;
             let totalInvestment = 0;
             let transactionHistory = [];
@@ -1174,6 +1264,88 @@
             
             // Загрузка данных из localStorage
             loadData();
+            
+            // Проверка первого входа
+            function checkFirstTime() {
+                if (userProfile.isFirstTime) {
+                    // Показываем модальное окно установки начального баланса
+                    setTimeout(() => {
+                        initialBalanceModal.style.display = 'flex';
+                        initialBalanceInput.focus();
+                    }, 500);
+                }
+            }
+            
+            // Обработчики для модального окна начального баланса
+            cancelInitialBtn.addEventListener('click', function() {
+                // Устанавливаем баланс по умолчанию
+                balance = 10000;
+                userProfile.isFirstTime = false;
+                initialBalanceModal.style.display = 'none';
+                saveData();
+                updateUI();
+                showNotification('✅ Установлен баланс по умолчанию: 10,000 $', 'success');
+            });
+            
+            confirmInitialBtn.addEventListener('click', function() {
+                const initialBalanceValue = parseFloat(initialBalanceInput.value);
+                
+                if (!initialBalanceValue || initialBalanceValue <= 0) {
+                    showNotification('Введите корректную сумму', 'danger');
+                    initialBalanceInput.focus();
+                    return;
+                }
+                
+                balance = initialBalanceValue;
+                userProfile.isFirstTime = false;
+                initialBalanceModal.style.display = 'none';
+                saveData();
+                updateUI();
+                showNotification(`✅ Установлен начальный баланс: ${balance.toLocaleString()} $`, 'success');
+            });
+            
+            // Обработчики для модального окна сброса данных
+            resetDataBtn.addEventListener('click', function() {
+                resetModal.style.display = 'flex';
+            });
+            
+            cancelResetBtn.addEventListener('click', function() {
+                resetModal.style.display = 'none';
+            });
+            
+            confirmResetBtn.addEventListener('click', function() {
+                // Сбрасываем все данные
+                inventory = [];
+                balance = 10000; // Возвращаем начальный баланс
+                totalProfit = 0;
+                totalInvestment = 0;
+                transactionHistory = [];
+                currentSellingItem = null;
+                
+                // Сохраняем сброшенные данные
+                saveData();
+                
+                // Закрываем модальное окно
+                resetModal.style.display = 'none';
+                
+                // Обновляем интерфейс
+                updateUI();
+                
+                // Показываем уведомление
+                showNotification('✅ Все данные успешно сброшены! Установлен баланс по умолчанию: 10,000 $', 'success');
+                
+                // Переключаемся на вкладку добавления
+                setTimeout(() => {
+                    switchToTab('tab-add');
+                }, 500);
+            });
+            
+            // Закрытие модального окна сброса по клику вне его
+            resetModal.addEventListener('click', function(e) {
+                if (e.target === resetModal) {
+                    resetModal.style.display = 'none';
+                }
+            });
             
             // Функция обновления профиля пользователя
             function updateUserProfile() {
@@ -2048,17 +2220,29 @@
                     try {
                         const data = JSON.parse(savedData);
                         inventory = data.inventory || [];
-                        balance = data.balance || 10000;
+                        balance = data.balance || 0;
                         totalProfit = data.totalProfit || 0;
                         totalInvestment = data.totalInvestment || 0;
                         transactionHistory = data.transactionHistory || [];
-                        userProfile = data.userProfile || userProfile;
+                        
+                        // Проверяем наличие userProfile в сохраненных данных
+                        if (data.userProfile) {
+                            userProfile = data.userProfile;
+                        } else {
+                            // Если userProfile нет в сохраненных данных, сохраняем текущий
+                            saveData();
+                        }
+                        
                         console.log('Данные загружены из localStorage:', data);
                     } catch (e) {
                         console.error('Ошибка загрузки данных:', e);
+                        // Если есть ошибка, показываем окно начального баланса
+                        userProfile.isFirstTime = true;
                     }
                 } else {
                     console.log('Нет сохраненных данных, используем начальные значения');
+                    // Это первый запуск, показываем окно начального баланса
+                    userProfile.isFirstTime = true;
                 }
             }
             
@@ -2070,6 +2254,11 @@
             setupNavigation();
             updateUI();
             
+            // Проверяем первый ли это вход после полной загрузки интерфейса
+            setTimeout(() => {
+                checkFirstTime();
+            }, 1000);
+            
             // Пересоздаем снежинки при изменении размера окна
             window.addEventListener('resize', function() {
                 createSnowflakes();
@@ -2080,6 +2269,7 @@
             console.log('Приложение инициализировано');
             console.log('Текущий инвентарь:', inventory);
             console.log('Текущий баланс:', balance);
+            console.log('Первый вход:', userProfile.isFirstTime);
         });
     </script>
 </body>
